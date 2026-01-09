@@ -1,0 +1,9 @@
+# Core dependencies
+pygame>=2.5.0          # For vector graphics and game loop
+colorama>=0.4.6        # For colored terminal text
+pyyaml>=6.0           # For game data files (rooms, items, etc)
+
+# Development dependencies
+pytest>=7.4.0          # Testing framework
+pytest-cov>=4.1.0      # Code coverage
+black>=23.0.0          # Code formatting
