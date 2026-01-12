@@ -283,7 +283,7 @@ def create_world():
         description=(
             "You have entered the heart of the corruption. SKOOLACH writhes before you - "
             "a massive entity of malformed code and malicious intent. Red error messages "
-            "cascade down the walls like digital blood.\n\n"
+            "cascade down the walls like a digital waterfall.\n\n"
             "The virus hisses: 'YOU CANNOT DEFEAT ME WITHOUT YOUR PRECIOUS AI...'\n\n"
             "This is the final battle. Attack SKOOLACH when ready."
         ),

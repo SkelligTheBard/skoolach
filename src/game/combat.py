@@ -214,7 +214,7 @@ class CombatSystem:
             ),
             'training_data': CombatAction(
                 name="Knowledge Beam",
-                description="Weaponize accumulated knowledge against the virus.",
+                description="Deploy accumulated knowledge against the virus.",
                 damage=28,
                 required_component='training_data'
             ),
