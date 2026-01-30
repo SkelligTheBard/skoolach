@@ -48,6 +48,6 @@ saves/
 
 # Claude AI assistant files
 .claude/
-tmpclaude-*/
+tmpclaude-*
 .claude-*
 claude-*.log
