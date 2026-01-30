@@ -1,4 +1,5 @@
-# SKOOLACH
+# SKOOLACH 
+(The primary Scottish Gaelic word for a narrative, tale, or story is sgeulachd, romanized to SKOOLACH)
 
 A retro text adventure game with vector graphics that teaches the fundamentals of AI model architecture through interactive storytelling.
 
