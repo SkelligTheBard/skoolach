@@ -21,6 +21,7 @@ Part of the game's purpose is to be passed around among developers and AI enthus
 - 🌍 **Design new rooms** and areas to explore
 - ⚔️ **Add new items** or enemies
 - 🔧 **Refine gameplay** mechanics
+- **BE CURIOUS** about the process when working with the AI, ask it to explain steps, choices, and give you opportunities to ask questions. 
 
 Then **share your enhanced version** with others! Each person who plays can contribute their own improvements, creating an ever-evolving educational experience.
 
