@@ -19,6 +19,9 @@ class GameEngine:
         self.game_won = False
         self.combat: Optional[CombatSystem] = None
         self.in_combat = False
+        self.debugger_spawned = False  # Track if quantum debugger has been spawned
+        self.memory_corridor = None  # Reference to Memory Corridor room
+        self.quantum_debugger = None  # Reference to quantum debugger item
 
     def setup(self, starting_room: Room, player_name: str = "Coder"):
         """
@@ -30,6 +33,12 @@ class GameEngine:
         """
         self.player = Player(name=player_name, starting_room=starting_room)
         self.running = True
+
+        # Store references to special rooms/items for game progression
+        if hasattr(starting_room, '_memory_corridor'):
+            self.memory_corridor = starting_room._memory_corridor
+        if hasattr(starting_room, '_quantum_debugger'):
+            self.quantum_debugger = starting_room._quantum_debugger
 
     def process_command(self, command_text: str) -> str:
         """
@@ -95,10 +104,14 @@ class GameEngine:
         """Handle the look command."""
         if not args:
             # Look at the room
-            return self.player.current_room.get_description()
+            return self.player.current_room.get_description(has_light=self.player.has_light())
         else:
             # Look at an item
             item_name = ' '.join(args)
+
+            # In dark rooms without light, can't see items
+            if self.player.current_room.is_dark and not self.player.has_light():
+                return "It's too dark to see anything. You need a light source."
 
             # Check inventory first
             item = self.player.get_item(item_name)
@@ -129,7 +142,7 @@ class GameEngine:
         new_room = self.player.current_room.get_exit(direction)
         if new_room:
             self.player.move_to(new_room)
-            return new_room.get_description()
+            return new_room.get_description(has_light=self.player.has_light())
         else:
             return "You can't go that way."
 
@@ -137,6 +150,10 @@ class GameEngine:
         """Handle the take command."""
         if not args:
             return "Take what?"
+
+        # Can't take items in dark rooms without light
+        if self.player.current_room.is_dark and not self.player.has_light():
+            return "It's too dark to see anything. You need a light source."
 
         item_name = ' '.join(args)
         item = self.player.current_room.get_item(item_name)
@@ -152,7 +169,14 @@ class GameEngine:
             # Check if this is an AI component and upgrade parser
             if item.is_ai_component:
                 upgrade_msg = self._apply_component_upgrade(item)
-                return f"{message}\n\n{upgrade_msg}"
+                result = f"{message}\n\n{upgrade_msg}"
+
+                # Check if all components collected - spawn quantum debugger
+                debugger_msg = self._check_spawn_debugger()
+                if debugger_msg:
+                    result += f"\n\n{debugger_msg}"
+
+                return result
 
         return message
 
@@ -180,21 +204,36 @@ class GameEngine:
             return "Use what?"
 
         item_name = args[0] if len(args) >= 1 else ''
-        target_name = args[1] if len(args) >= 2 else None
 
         item = self.player.get_item(item_name)
 
         if not item:
             return f"You don't have any '{item_name}'."
 
-        # Get target if specified
-        target = None
-        if target_name:
-            target = self.player.current_room.get_item(target_name)
-            if not target:
-                return f"You don't see any '{target_name}' here."
+        # Special handling for flashlight
+        if 'flashlight' in item.name.lower() or 'light' in item_name.lower():
+            if self.player.flashlight_on:
+                self.player.flashlight_on = False
+                return "You turn off the flashlight. Darkness surrounds you."
+            else:
+                self.player.flashlight_on = True
+                result = "You turn on the flashlight. Bright LED light illuminates the area!"
+                # If we're in a dark room, show the room description now
+                if self.player.current_room.is_dark:
+                    result += "\n\n" + self.player.current_room.get_description(has_light=True)
+                return result
 
-        return item.use(target)
+        # Check if item has a use method
+        if hasattr(item, 'use'):
+            target_name = args[1] if len(args) >= 2 else None
+            target = None
+            if target_name:
+                target = self.player.current_room.get_item(target_name)
+                if not target:
+                    return f"You don't see any '{target_name}' here."
+            return item.use(target)
+
+        return f"You can't use the {item.name} that way."
 
     def _handle_attack(self, args) -> str:
         """Handle the attack command."""
@@ -351,6 +390,39 @@ class GameEngine:
 
         # Placeholder for dialogue system
         return "There's no response."
+
+    def _check_spawn_debugger(self) -> str:
+        """
+        Check if all AI components collected and spawn quantum debugger if so.
+
+        Returns:
+            Message string if debugger spawns, empty string otherwise
+        """
+        # Only spawn once
+        if self.debugger_spawned:
+            return ""
+
+        # Check if all 9 AI components collected
+        if len(self.player.ai_components_collected) >= 9:
+            # Spawn the debugger in Memory Corridor
+            if self.memory_corridor and self.quantum_debugger:
+                self.memory_corridor.add_item(self.quantum_debugger)
+                self.debugger_spawned = True
+
+                return (
+                    "════════════════════════════════════════════════════════════════\n"
+                    "⚡ SYSTEM NOTIFICATION ⚡\n"
+                    "════════════════════════════════════════════════════════════════\n\n"
+                    "With all AI components assembled, your model begins to stabilize!\n"
+                    "A powerful resonance emanates from your reconstructed architecture.\n\n"
+                    "*** FINAL KEY UNLOCKED ***\n\n"
+                    "The QUANTUM DEBUGGER has materialized in the MEMORY CORRIDOR!\n"
+                    "This tool will allow you to confront SKOOLACH directly.\n\n"
+                    "Return to the Memory Corridor to claim it.\n"
+                    "════════════════════════════════════════════════════════════════"
+                )
+
+        return ""
 
     def _apply_component_upgrade(self, component) -> str:
         """

@@ -31,9 +31,19 @@ class GraphicsEngine:
         self.text_area_height = 250
         self.text_area_y = height - self.text_area_height
 
-        # Text buffer for displaying game messages
-        self.text_lines: List[str] = []
-        self.max_text_lines = 10
+        # Split the text area into two columns
+        self.text_area_split_x = width // 2  # Vertical divider position
+
+        # Left side: Command history
+        self.command_history: List[str] = []
+        self.max_history_lines = 50
+
+        # Right side: Current description/output
+        self.description_lines: List[str] = []
+        self.description_scroll = 0  # Scroll offset for long descriptions
+
+        # Status bar
+        self.status_text = ""
 
         # Input area
         self.input_text = ""
@@ -74,41 +84,105 @@ class GraphicsEngine:
         """
         self.scene_manager.update_scene_items(room_name, items, ai_components)
 
-    def add_text(self, text: str):
+    def add_command(self, command: str):
         """
-        Add text to the display buffer.
+        Add a command to the history (left side).
 
         Args:
-            text: Text to add (can contain newlines)
+            command: Command text to add
         """
+        self.command_history.append(self.input_prompt + command)
+
+        # Keep only last N lines
+        if len(self.command_history) > self.max_history_lines:
+            self.command_history = self.command_history[-self.max_history_lines:]
+
+    def set_description(self, text: str):
+        """
+        Set the description text (right side).
+
+        Args:
+            text: Description text (can contain newlines)
+        """
+        self.description_lines = []
         lines = text.split('\n')
+
+        # Wrap lines to fit in half the screen width
+        max_width = 45  # Characters per line for right pane
+
         for line in lines:
-            # Wrap long lines
-            if len(line) > 80:
+            if len(line) > max_width:
                 words = line.split()
                 current_line = ""
                 for word in words:
-                    if len(current_line) + len(word) + 1 <= 80:
+                    if len(current_line) + len(word) + 1 <= max_width:
                         current_line += word + " "
                     else:
-                        self.text_lines.append(current_line.strip())
+                        if current_line:
+                            self.description_lines.append(current_line.strip())
                         current_line = word + " "
                 if current_line:
-                    self.text_lines.append(current_line.strip())
+                    self.description_lines.append(current_line.strip())
             else:
-                self.text_lines.append(line)
+                self.description_lines.append(line)
 
-        # Keep only last N lines
-        if len(self.text_lines) > self.max_text_lines:
-            self.text_lines = self.text_lines[-self.max_text_lines:]
+        # Auto-scroll to show the newest content (bottom of text)
+        self._auto_scroll_to_bottom()
+
+    def add_text(self, text: str):
+        """
+        Add text to the description (appends, doesn't replace).
+
+        Args:
+            text: Text to add
+        """
+        # Split into lines and wrap them
+        lines = text.split('\n')
+        max_width = 45  # Characters per line for right pane
+
+        for line in lines:
+            if len(line) > max_width:
+                words = line.split()
+                current_line = ""
+                for word in words:
+                    if len(current_line) + len(word) + 1 <= max_width:
+                        current_line += word + " "
+                    else:
+                        if current_line:
+                            self.description_lines.append(current_line.strip())
+                        current_line = word + " "
+                if current_line:
+                    self.description_lines.append(current_line.strip())
+            else:
+                self.description_lines.append(line)
+
+        # Auto-scroll to show the newest content
+        self._auto_scroll_to_bottom()
+
+    def _auto_scroll_to_bottom(self):
+        """Automatically scroll to show the most recent text."""
+        line_height = 20
+        max_desc_lines = int((self.text_area_height - 20) / line_height)
+
+        # Scroll to show the last page of text
+        total_lines = len(self.description_lines)
+        if total_lines > max_desc_lines:
+            self.description_scroll = total_lines - max_desc_lines
+        else:
+            self.description_scroll = 0
 
     def set_input_text(self, text: str):
         """Set the current input text."""
         self.input_text = text
 
+    def set_status(self, status_text: str):
+        """Set the status bar text."""
+        self.status_text = status_text
+
     def clear_text(self):
-        """Clear the text buffer."""
-        self.text_lines = []
+        """Clear the text buffers."""
+        self.command_history = []
+        self.description_lines = []
 
     def render(self):
         """Render the current frame."""
@@ -166,8 +240,8 @@ class GraphicsEngine:
             )
 
     def _render_text_overlay(self):
-        """Render the text display area."""
-        # Draw separator line
+        """Render the split-pane text display area."""
+        # Draw top separator line
         separator_y = self.text_area_y - 10
         self.renderer.draw_line(
             (0, separator_y),
@@ -177,28 +251,86 @@ class GraphicsEngine:
         )
 
         # Draw background for text area
-        text_rect = pygame.Rect(0, self.text_area_y, self.renderer.width, self.text_area_height)
         bg_surface = pygame.Surface((self.renderer.width, self.text_area_height))
         bg_surface.fill((0, 0, 0))
         bg_surface.set_alpha(200)
         self.renderer.screen.blit(bg_surface, (0, self.text_area_y))
 
-        # Draw text lines
+        # Draw vertical separator line between panes
+        self.renderer.draw_line(
+            (self.text_area_split_x, self.text_area_y),
+            (self.text_area_split_x, self.renderer.height),
+            self.renderer.colors['primary'],
+            width=2
+        )
+
+        line_height = 20
+        input_y = self.renderer.height - 30
+
+        # === STATUS BAR (above left pane) ===
+        if self.status_text:
+            status_y = self.text_area_y - 30
+            self.renderer.draw_text(
+                self.status_text,
+                (10, status_y),
+                font_size='small',
+                color=self.renderer.colors['highlight']
+            )
+
+        # === LEFT PANE: Command history and input ===
+        left_x = 10
+        left_width = self.text_area_split_x - 20
+
+        # Calculate available space for history
+        available_height = input_y - 10 - (self.text_area_y + 10)
+        max_visible_lines = int(available_height / line_height)
+
+        # Render command history (most recent that fit)
+        visible_history = self.command_history[-max_visible_lines:] if len(self.command_history) > max_visible_lines else self.command_history
+
         y = self.text_area_y + 10
-        for line in self.text_lines:
-            self.renderer.draw_text(line, (10, y), font_size='small')
-            y += 20
+        for line in visible_history:
+            self.renderer.draw_text(line, (left_x, y), font_size='small')
+            y += line_height
 
         # Draw input line
-        input_y = self.renderer.height - 30
         input_line = self.input_prompt + self.input_text
         cursor = "_" if int(self.time * 2) % 2 == 0 else " "  # Blinking cursor
         self.renderer.draw_text(
             input_line + cursor,
-            (10, input_y),
+            (left_x, input_y),
             font_size='medium',
             color=self.renderer.colors['highlight']
         )
+
+        # === RIGHT PANE: Current description/output ===
+        right_x = self.text_area_split_x + 10
+        right_width = self.renderer.width - self.text_area_split_x - 20
+
+        # Calculate how many description lines fit
+        max_desc_lines = int((self.text_area_height - 20) / line_height)
+
+        # Apply scroll offset and render description
+        start_line = self.description_scroll
+        end_line = start_line + max_desc_lines
+
+        visible_desc = self.description_lines[start_line:end_line]
+
+        y = self.text_area_y + 10
+        for line in visible_desc:
+            self.renderer.draw_text(line, (right_x, y), font_size='small')
+            y += line_height
+
+        # Show scroll indicator if there's more content
+        total_lines = len(self.description_lines)
+        if total_lines > max_desc_lines:
+            scroll_info = f"[{start_line + 1}-{min(end_line, total_lines)}/{total_lines}] Use UP/DOWN to scroll"
+            self.renderer.draw_text(
+                scroll_info,
+                (right_x, self.renderer.height - 50),
+                font_size='small',
+                color=self.renderer.colors['dim']
+            )
 
     def handle_input(self) -> Tuple[Optional[str], bool]:
         """
@@ -222,11 +354,16 @@ class GraphicsEngine:
                     # Submit command
                     if self.input_text:
                         command = self.input_text
-                        self.add_text(self.input_prompt + self.input_text)
+                        self.add_command(self.input_text)
                         self.input_text = ""
 
                 elif event.key == pygame.K_BACKSPACE:
                     self.input_text = self.input_text[:-1]
+
+                elif event.key == pygame.K_DELETE:
+                    # Clear the description pane
+                    self.description_lines = []
+                    self.description_scroll = 0
 
                 elif event.key == pygame.K_TAB:
                     # Toggle auto-rotate
@@ -241,6 +378,32 @@ class GraphicsEngine:
                     # Manual camera rotation
                     self.camera_rotation += 0.1
                     self.auto_rotate = False
+
+                elif event.key == pygame.K_UP:
+                    # Scroll description up
+                    if self.description_scroll > 0:
+                        self.description_scroll -= 1
+
+                elif event.key == pygame.K_DOWN:
+                    # Scroll description down
+                    line_height = 20
+                    max_desc_lines = int((self.text_area_height - 20) / line_height)
+                    max_scroll = max(0, len(self.description_lines) - max_desc_lines)
+                    if self.description_scroll < max_scroll:
+                        self.description_scroll += 1
+
+                elif event.key == pygame.K_PAGEUP:
+                    # Scroll description up by one page
+                    line_height = 20
+                    max_desc_lines = int((self.text_area_height - 20) / line_height)
+                    self.description_scroll = max(0, self.description_scroll - max_desc_lines)
+
+                elif event.key == pygame.K_PAGEDOWN:
+                    # Scroll description down by one page
+                    line_height = 20
+                    max_desc_lines = int((self.text_area_height - 20) / line_height)
+                    max_scroll = max(0, len(self.description_lines) - max_desc_lines)
+                    self.description_scroll = min(max_scroll, self.description_scroll + max_desc_lines)
 
                 elif event.unicode and event.unicode.isprintable():
                     self.input_text += event.unicode

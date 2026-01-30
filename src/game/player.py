@@ -17,6 +17,7 @@ class Player:
         self.ai_components_collected = []  # Track AI components separately
         self.max_inventory = 10
         self.health = 100  # For combat with the virus
+        self.flashlight_on = False  # Track if flashlight is being used
 
     def take_item(self, item):
         """
@@ -100,3 +101,12 @@ class Player:
             Integer level (0 = basic, higher = more sophisticated)
         """
         return len(self.ai_components_collected)
+
+    def has_light(self):
+        """
+        Check if player has an active light source.
+
+        Returns:
+            Boolean indicating if player can see in dark rooms
+        """
+        return self.flashlight_on

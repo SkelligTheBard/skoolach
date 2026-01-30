@@ -36,8 +36,41 @@ class Item:
         return f"You can't use the {self.name} that way."
 
     def matches(self, word):
-        """Check if a word matches this item."""
-        return word.lower() in self.keywords
+        """
+        Check if a word or phrase matches this item.
+
+        Args:
+            word: A word or phrase to match against item keywords
+
+        Returns:
+            True if any keyword matches or if all words in the input match keywords
+        """
+        word_lower = word.lower()
+
+        # Check exact match with any keyword
+        if word_lower in self.keywords:
+            return True
+
+        # Check if the full name matches (case-insensitive)
+        if word_lower == self.name.lower():
+            return True
+
+        # For multi-word input, check if all words match at least one keyword
+        input_words = word_lower.split()
+        if len(input_words) > 1:
+            # Check if any significant word matches
+            for input_word in input_words:
+                # Skip common articles/prepositions
+                if input_word in ['the', 'a', 'an']:
+                    continue
+                # If this word matches any keyword, it's a match
+                if any(input_word in keyword for keyword in self.keywords):
+                    return True
+                # Also check if this word is in the item name
+                if input_word in self.name.lower():
+                    return True
+
+        return False
 
 
 class AIComponent(Item):

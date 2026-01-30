@@ -43,10 +43,13 @@ def main_with_graphics():
     graphics_engine.add_text("")
     graphics_engine.add_text(game_engine.player.current_room.get_description())
     graphics_engine.add_text("")
-    graphics_engine.add_text("[TIP: Type HELP for commands. Use TAB to toggle camera rotation, arrows to rotate manually]")
+    graphics_engine.add_text("[TIP: Type HELP for commands. TAB=toggle camera, LEFT/RIGHT=rotate, UP/DOWN=scroll, DEL=clear text]")
 
     # Main game loop
     while game_engine.is_running():
+        # Update status bar
+        graphics_engine.set_status(game_engine.get_status_bar())
+
         # Handle input
         command, should_quit = graphics_engine.handle_input()
 

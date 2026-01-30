@@ -116,7 +116,8 @@ def create_world():
             "infinity. Books, documents, and datasets fill the space. Many are corrupted.\n\n"
             "A glowing archive hovers in the center. Paths lead northwest and northeast."
         ),
-        short_desc="The Dark Archives, filled with corrupted training data."
+        short_desc="The Dark Archives, filled with corrupted training data.",
+        is_dark=True  # Requires flashlight to see
     )
 
     memory_corridor.add_exit("west", dark_archives)
@@ -132,7 +133,7 @@ def create_world():
             "billions of text samples from across the internet. Many pages are corrupted."
         ),
         takeable=False,
-        keywords=["book", "codex", "tome", "crawl"]
+        keywords=["book", "codex", "tome", "crawl", "ancient"]
     )
     dark_archives.add_item(ancient_book)
 
@@ -250,6 +251,7 @@ def create_world():
 
     # ========== PUZZLE: LOCKED DOOR TO VIRUS ==========
     # Create a puzzle item needed to access virus
+    # NOTE: This will appear in Memory Corridor after collecting all AI components
 
     debugger = Item(
         name="quantum debugger",
@@ -260,7 +262,7 @@ def create_world():
         takeable=True,
         keywords=["debugger", "quantum", "tool"]
     )
-    finetuning_lab.add_item(debugger)
+    # Don't add debugger to any room yet - it will spawn after collecting all components
 
     # ========== VIRUS LAIR (final area) ==========
 
@@ -309,6 +311,10 @@ def create_world():
     # This room is only accessible after defeating virus
     # We'll handle this in the game engine
     virus_lair.add_exit("north", hall_of_triumph)
+
+    # Store special items/rooms for later access
+    crash_site._memory_corridor = memory_corridor
+    crash_site._quantum_debugger = debugger
 
     return crash_site
 

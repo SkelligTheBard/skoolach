@@ -3,7 +3,7 @@
 class Room:
     """Represents a location in the game that the player can visit."""
 
-    def __init__(self, name, description, short_desc=None):
+    def __init__(self, name, description, short_desc=None, is_dark=False):
         """
         Initialize a room.
 
@@ -11,10 +11,12 @@ class Room:
             name: The name of the room
             description: Full description shown on first visit or when examined
             short_desc: Brief description for subsequent visits
+            is_dark: Whether this room requires a light source to see
         """
         self.name = name
         self.description = description
         self.short_desc = short_desc or name
+        self.is_dark = is_dark
         self.exits = {}  # direction -> Room mapping
         self.items = []  # Items in this room
         self.visited = False
@@ -51,8 +53,24 @@ class Room:
                 return item
         return None
 
-    def get_description(self):
-        """Get the appropriate description for this room."""
+    def get_description(self, has_light=True):
+        """
+        Get the appropriate description for this room.
+
+        Args:
+            has_light: Whether the player has an active light source
+
+        Returns:
+            Room description string
+        """
+        # If room is dark and player has no light, can't see anything
+        if self.is_dark and not has_light:
+            return (
+                "It's pitch black. You can't see anything.\n\n"
+                "You need a light source to explore this area."
+            )
+
+        # Normal description
         if not self.visited:
             self.visited = True
             desc = self.description
