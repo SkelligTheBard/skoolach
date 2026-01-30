@@ -45,3 +45,9 @@ htmlcov/
 # Game saves (for future)
 saves/
 *.sav
+
+# Claude AI assistant files
+.claude/
+tmpclaude-*/
+.claude-*
+claude-*.log
